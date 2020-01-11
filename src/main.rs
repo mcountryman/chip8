@@ -34,7 +34,7 @@ fn main() -> Result<()> {
     .on_event(|event| {
       if let Event::WindowEvent { event, .. } = event {
         if let WindowEvent::KeyboardInput { input, .. } = event {
-          // do shit
+          emulator.ipu.borrow_mut().process_input(input);
         }
       }
     })

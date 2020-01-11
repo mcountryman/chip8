@@ -424,7 +424,7 @@ impl Cpu {
   /// Keyboard interrupt, store key in Vx
   ///
   fn run_ld_key(&mut self, vx: usize) -> Step {
-    self.reg8[vx] = self.ipu.borrow().wait_key();
+    self.reg8[vx] = self.ipu.borrow_mut().wait_key();
     Step::Next
   }
 
