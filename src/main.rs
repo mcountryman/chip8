@@ -2,23 +2,40 @@
 extern crate imgui;
 
 use std::io::Result;
-use crate::support::App;
-use imgui::{Window, Condition};
 
-mod cpu;
-mod ram;
+use glium::glutin::{Event, WindowEvent};
+use imgui::{Condition, Window};
+use imgui::NavInput::Menu;
+
+use crate::emulator::Emulator;
+use crate::support::App;
+
 mod support;
+mod emulator;
 
 fn main() -> Result<()> {
-  let mut app = App::create()?;
+  let mut emulator = Emulator::new();
+  let mut app = App::create(
+    "chip8",
+    640.0,
+    380.0
+  )?;
 
-  app.on_ui(|ui| {
-    Window::new(im_str!("chip8"))
-      .size([300.0, 100.0], Condition::FirstUseEver)
-      .build(ui, || {
-        ui.text(im_str!("Emulator here"));
-      });
-  });
+  let mut show_metrics = false;
+
+  app
+    .on_ui(|ui| {
+      // Menu end w/margin = 30
+
+
+    })
+    .on_event(|event| {
+      if let Event::WindowEvent { event, .. } = event {
+        if let WindowEvent::KeyboardInput { input, .. } = event {
+          // do shit
+        }
+      }
+    });
 
   app.run()?;
 

@@ -1,13 +1,20 @@
+use std::cell::RefCell;
 use std::io::Result;
-use glium::glutin::{self, Event, WindowEvent};
+use std::ops::{Deref, DerefMut};
+use std::time::Instant;
+
 use glium::{Display, Surface};
+use glium::glutin::{self, Event, WindowEvent};
 use imgui::{Context, FontConfig, FontGlyphRanges, FontSource, Ui};
 use imgui_glium_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
-use std::time::Instant;
-use std::ops::{Deref, DerefMut};
+use std::borrow::Borrow;
+
+type UiCallback = RefCell<dyn FnOnce(&mut Ui) -> ()>;
+type EventCallback = RefCell<dyn FnOnce(&mut Event) -> ()>;
 
 pub struct App {
+  pub run: bool,
   pub imgui: Context,
   pub events: glutin::EventsLoop,
   pub display: Display,
@@ -15,15 +22,23 @@ pub struct App {
   pub renderer: Renderer,
 
   handle_ui: Option<fn(&mut Ui)>,
+  handle_event: Option<fn(&Event)>,
+  handle_update: Option<RefCell<dyn FnOnce() -> ()>>,
 }
 
 impl App {
-  pub fn create() -> Result<Self> {
+  pub fn create(title: &str, width: f32, height: f32) -> Result<Self> {
     let events = glutin::EventsLoop::new();
     let context = glutin::ContextBuilder::new().with_vsync(true);
     let window_builder = glutin::WindowBuilder::new()
-      .with_title("chip8")
-      .with_dimensions(glutin::dpi::LogicalSize::new(640f64, 480f64));
+      .with_title(title)
+      .with_resizable(false)
+      .with_dimensions(
+        glutin::dpi::LogicalSize::new(
+          width as f64,
+          height as f64
+        )
+      );
 
     let display = Display::new(
       window_builder,
@@ -40,6 +55,7 @@ impl App {
     // TODO: Initialize graphics
 
     let mut result = Self {
+      run: true,
       imgui,
       events,
       display,
@@ -47,6 +63,8 @@ impl App {
       renderer,
 
       handle_ui: None,
+      handle_event: None,
+      handle_update: None,
     };
 
     result.init_window()?;
@@ -97,6 +115,7 @@ impl App {
 
   pub fn run(self) -> Result<()> {
     let Self {
+      mut run,
       mut events,
       display,
       mut imgui,
@@ -104,17 +123,22 @@ impl App {
       mut renderer,
 
       handle_ui,
+      handle_event,
+      handle_update,
       ..
     } = self;
 
     let window = display.gl_window();
     let window = window.window();
-    let mut run = true;
     let mut last_frame = Instant::now();
 
     while run {
       events.poll_events(|event| {
         platform.handle_event(imgui.io_mut(), &window, &event);
+
+        if let Some(handle_event) = handle_event {
+          handle_event(&event);
+        }
 
         if let Event::WindowEvent { event, .. } = event {
           if let WindowEvent::CloseRequested = event {
@@ -145,12 +169,29 @@ impl App {
         .expect("Rendering failed");
 
       target.finish().expect("Failed to swap buffers");
+
+      if let Some(handle_update) = handle_update.borrow() {
+        handle_update();
+      }
     }
 
     Ok(())
   }
 
-  pub fn on_ui(&mut self, handler: fn(&mut Ui)) {
+  pub fn on_ui(&mut self, handler: fn(&mut Ui)) -> &mut Self {
     self.handle_ui = Some(handler);
+    self
+  }
+
+  pub fn on_event(&mut self, handler: fn(&Event)) -> &mut Self {
+    self.handle_event = Some(handler);
+    self
+  }
+
+  pub fn on_update<F>(&mut self, handler: &'static F) -> &mut Self
+    where F: Fn() -> () {
+
+    self.handle_update = Some(RefCell::new(handler));
+    self
   }
 }
