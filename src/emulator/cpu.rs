@@ -10,22 +10,7 @@ use crate::emulator::ipu::Ipu;
 use crate::emulator::ram::{MEMORY_PROGRAM, Ram};
 
 pub const V0: usize = 0x00;
-pub const V1: usize = 0x01;
-pub const V2: usize = 0x02;
-pub const V3: usize = 0x03;
-pub const V4: usize = 0x04;
-pub const V5: usize = 0x05;
-pub const V6: usize = 0x06;
-pub const V7: usize = 0x07;
-pub const V8: usize = 0x08;
-pub const V9: usize = 0x09;
-pub const VA: usize = 0x0A;
-pub const VB: usize = 0x0B;
-pub const VC: usize = 0x0C;
-pub const VD: usize = 0x0D;
-pub const VE: usize = 0x0E;
 pub const VF: usize = 0x0F;
-
 pub const ST: usize = 0x10;
 pub const DT: usize = 0x11;
 
@@ -34,7 +19,7 @@ pub struct Cpu {
   ipu: Rc<RefCell<Ipu>>,
   rng: ThreadRng,
 
-  reg8: [u8; 0x11],
+  reg8: [u8; 0x12],
   reg16: u16,
   stack: [u16; 16],
   clock: Instant,
@@ -57,7 +42,7 @@ impl Cpu {
       ipu,
       rng: thread_rng(),
 
-      reg8: [0u8; 0x11],
+      reg8: [0u8; 0x12],
       reg16: 0,
       stack: [0u16; 0x10],
       clock: Instant::now(),

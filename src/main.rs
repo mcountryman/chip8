@@ -37,7 +37,11 @@ fn main() -> Result<()> {
           // do shit
         }
       }
-    });
+    })
+    .on_update(|| {
+      emulator.cpu.borrow_mut().tick();
+    })
+  ;
 
   app.run()?;
 
