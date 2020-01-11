@@ -9,6 +9,7 @@ use imgui::NavInput::Menu;
 
 use crate::emulator::Emulator;
 use crate::support::App;
+use std::cell::RefCell;
 
 mod support;
 mod emulator;
@@ -26,6 +27,7 @@ fn main() -> Result<()> {
   app
     .on_ui(|ui| {
       // Menu end w/margin = 30
+      ui.show_metrics_window(&mut show_metrics);
 
 
     })

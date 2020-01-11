@@ -13,7 +13,7 @@ use std::borrow::Borrow;
 type UiCallback = RefCell<dyn FnOnce(&mut Ui) -> ()>;
 type EventCallback = RefCell<dyn FnOnce(&mut Event) -> ()>;
 
-pub struct App {
+pub struct App<'a> {
   pub run: bool,
   pub imgui: Context,
   pub events: glutin::EventsLoop,
@@ -21,12 +21,12 @@ pub struct App {
   pub platform: WinitPlatform,
   pub renderer: Renderer,
 
-  handle_ui: Option<fn(&mut Ui)>,
-  handle_event: Option<fn(&Event)>,
-  handle_update: Option<RefCell<dyn FnOnce() -> ()>>,
+  handle_ui: Option<Box<dyn FnMut(&mut Ui) + 'a>>,
+  handle_event: Option<Box<dyn FnMut(&Event) + 'a>>,
+  handle_update: Option<Box<dyn FnMut() + 'a>>,
 }
 
-impl App {
+impl<'a> App<'a> {
   pub fn create(title: &str, width: f32, height: f32) -> Result<Self> {
     let events = glutin::EventsLoop::new();
     let context = glutin::ContextBuilder::new().with_vsync(true);
@@ -122,9 +122,9 @@ impl App {
       mut platform,
       mut renderer,
 
-      handle_ui,
-      handle_event,
-      handle_update,
+      mut handle_ui,
+      mut handle_event,
+      mut handle_update,
       ..
     } = self;
 
@@ -136,7 +136,7 @@ impl App {
       events.poll_events(|event| {
         platform.handle_event(imgui.io_mut(), &window, &event);
 
-        if let Some(handle_event) = handle_event {
+        if let Some(handle_event) = handle_event.as_mut() {
           handle_event(&event);
         }
 
@@ -155,7 +155,7 @@ impl App {
 
       let mut ui = imgui.frame();
 
-      if let Some(handle_ui) = handle_ui {
+      if let Some(handle_ui) = handle_ui.as_mut() {
         handle_ui(&mut ui);
       }
 
@@ -170,28 +170,29 @@ impl App {
 
       target.finish().expect("Failed to swap buffers");
 
-      if let Some(handle_update) = handle_update.borrow() {
+      if let Some(handle_update) = handle_update.as_mut() {
         handle_update();
       }
+//      if let Some(handle_update) = handle_update.borrow() {
+//        handle_update.deref()();
+//      }
     }
 
     Ok(())
   }
 
-  pub fn on_ui(&mut self, handler: fn(&mut Ui)) -> &mut Self {
-    self.handle_ui = Some(handler);
+  pub fn on_ui(&mut self, handler: impl FnMut(&mut Ui) -> () + 'a) -> &mut Self {
+    self.handle_ui = Some(Box::new(handler));
     self
   }
 
-  pub fn on_event(&mut self, handler: fn(&Event)) -> &mut Self {
-    self.handle_event = Some(handler);
+  pub fn on_event(&mut self, handler: impl FnMut(&Event) -> () + 'a) -> &mut Self {
+    self.handle_event = Some(Box::new(handler));
     self
   }
 
-  pub fn on_update<F>(&mut self, handler: &'static F) -> &mut Self
-    where F: Fn() -> () {
-
-    self.handle_update = Some(RefCell::new(handler));
+  pub fn on_update(&mut self, handler: impl FnMut() -> () + 'a) -> &mut Self {
+    self.handle_update = Some(Box::new(handler));
     self
   }
 }
