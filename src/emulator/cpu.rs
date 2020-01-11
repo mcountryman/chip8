@@ -8,6 +8,7 @@ use rand::prelude::ThreadRng;
 
 use crate::emulator::ipu::Ipu;
 use crate::emulator::ram::{MEMORY_PROGRAM, Ram};
+use crate::emulator::gpu::Gpu;
 
 pub const V0: usize = 0x00;
 pub const VF: usize = 0x0F;
@@ -17,6 +18,7 @@ pub const DT: usize = 0x11;
 pub struct Cpu {
   ram: Rc<RefCell<Ram>>,
   ipu: Rc<RefCell<Ipu>>,
+  gpu: Rc<RefCell<Gpu>>,
   rng: ThreadRng,
 
   reg8: [u8; 0x12],
@@ -35,11 +37,15 @@ enum Step {
 }
 
 impl Cpu {
-
-  pub fn new(ram: Rc<RefCell<Ram>>, ipu: Rc<RefCell<Ipu>>) -> Self {
+  pub fn new(
+    ram: Rc<RefCell<Ram>>,
+    ipu: Rc<RefCell<Ipu>>,
+    gpu: Rc<RefCell<Gpu>>,
+  ) -> Self {
     Self {
       ram,
       ipu,
+      gpu,
       rng: thread_rng(),
 
       reg8: [0u8; 0x12],
@@ -509,5 +515,4 @@ impl Cpu {
 
     Step::Next
   }
-
 }
