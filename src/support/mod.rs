@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::io::Result;
 use std::ops::{Deref, DerefMut};
@@ -8,7 +9,6 @@ use glium::glutin::{self, Event, WindowEvent};
 use imgui::{Context, FontConfig, FontGlyphRanges, FontSource, Ui};
 use imgui_glium_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
-use std::borrow::Borrow;
 
 type UiCallback = RefCell<dyn FnOnce(&mut Ui) -> ()>;
 type EventCallback = RefCell<dyn FnOnce(&mut Event) -> ()>;

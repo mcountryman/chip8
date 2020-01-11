@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate imgui;
 
+use std::cell::RefCell;
 use std::io::Result;
 
 use glium::glutin::{Event, WindowEvent};
@@ -9,7 +10,6 @@ use imgui::NavInput::Menu;
 
 use crate::emulator::Emulator;
 use crate::support::App;
-use std::cell::RefCell;
 
 mod support;
 mod emulator;
