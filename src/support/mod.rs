@@ -4,11 +4,13 @@ use std::io::Result;
 use std::ops::{Deref, DerefMut};
 use std::time::Instant;
 
-use glium::{Display, Surface};
+use glium::{Display, Surface, Frame};
 use glium::glutin::{self, Event, WindowEvent};
 use imgui::{Context, FontConfig, FontGlyphRanges, FontSource, Ui};
-use imgui_glium_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
+
+use piston::window::WindowSettings;
+use glium_graphics::{Glium2d, GlyphCache, OpenGL, TextureSettings, GliumWindow};
 
 type UiCallback = RefCell<dyn FnOnce(&mut Ui) -> ()>;
 type EventCallback = RefCell<dyn FnOnce(&mut Event) -> ()>;
@@ -22,12 +24,22 @@ pub struct App<'a> {
   pub renderer: Renderer,
 
   handle_ui: Option<Box<dyn FnMut(&mut Ui) + 'a>>,
+  handle_draw: Option<Box<dyn FnMut(&mut Frame) + 'a>>,
   handle_event: Option<Box<dyn FnMut(&Event) + 'a>>,
   handle_update: Option<Box<dyn FnMut() + 'a>>,
 }
 
 impl<'a> App<'a> {
   pub fn create(title: &str, width: f32, height: f32) -> Result<Self> {
+    // Initialize Glium
+    let opengl = OpenGl::V3_2;
+    let ref mut window: GliumWindow =
+      WindowSettings::new("chip8", [500, 300])
+        .exit_on_esc(true)
+        .graphics_api(opengl)
+        .build()
+        .expect("Failed to create window");
+
     let events = glutin::EventsLoop::new();
     let context = glutin::ContextBuilder::new().with_vsync(true);
     let window_builder = glutin::WindowBuilder::new()
@@ -46,13 +58,11 @@ impl<'a> App<'a> {
       &events,
     ).expect("Failed to initialize display");
 
+    // Initialize ImGui
     let mut imgui = Context::create();
     let mut platform = WinitPlatform::init(&mut imgui);
     let renderer = Renderer::init(&mut imgui, &display)
       .expect("Failed to initialize renderer");
-
-
-    // TODO: Initialize graphics
 
     let mut result = Self {
       run: true,
@@ -63,6 +73,7 @@ impl<'a> App<'a> {
       renderer,
 
       handle_ui: None,
+      handle_draw: None,
       handle_event: None,
       handle_update: None,
     };
@@ -123,6 +134,7 @@ impl<'a> App<'a> {
       mut renderer,
 
       mut handle_ui,
+      mut handle_draw,
       mut handle_event,
       mut handle_update,
       ..
@@ -161,21 +173,25 @@ impl<'a> App<'a> {
 
       let mut target = display.draw();
 
+      // Clear background
       target.clear_color_srgb(0.1, 0.1, 0.1, 1.0);
+
+      if let Some(handle_draw) = handle_draw.as_mut() {
+        handle_draw(&mut target);
+      }
+
+      // Draw imgui buffer
       platform.prepare_render(&ui, &window);
-      let draw_data = ui.render();
       renderer
-        .render(&mut target, draw_data)
+        .render(&mut target, ui.render())
         .expect("Rendering failed");
 
+      // Swap buffers
       target.finish().expect("Failed to swap buffers");
 
       if let Some(handle_update) = handle_update.as_mut() {
         handle_update();
       }
-//      if let Some(handle_update) = handle_update.borrow() {
-//        handle_update.deref()();
-//      }
     }
 
     Ok(())
@@ -183,6 +199,11 @@ impl<'a> App<'a> {
 
   pub fn on_ui(&mut self, handler: impl FnMut(&mut Ui) -> () + 'a) -> &mut Self {
     self.handle_ui = Some(Box::new(handler));
+    self
+  }
+
+  pub fn on_draw(&mut self, handler: impl FnMut(&mut Frame) -> () + 'a) -> &mut Self {
+    self.handle_draw = Some(Box::new(handler));
     self
   }
 
