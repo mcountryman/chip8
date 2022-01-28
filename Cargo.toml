@@ -1,0 +1,9 @@
+[package]
+name = "chip8"
+authors = ["Marvin Countryman <me@maar.vin>"]
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rand = "0.8"
+crossterm = "0.22"
