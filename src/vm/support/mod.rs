@@ -1,6 +1,8 @@
 //! Graphics and keyboard support.
 
 pub mod terminal;
+pub mod terminal_debug;
+pub mod terminal_game;
 pub use terminal::*;
 
 use super::error::VmError;

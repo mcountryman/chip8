@@ -1,7 +1,7 @@
 //! Virtual machine instruction visitor.
 
 use super::{error::VmError, support::Support, Vm};
-use crate::insn::visit::InsnVisitor;
+use crate::insn::visit::InsnVisit;
 
 /// A virtual machine step.
 pub enum Step {
@@ -17,6 +17,7 @@ impl<S> Vm<S> {
   /// Gets value of register `reg`.
   fn get_reg(&self, reg: u8) -> Result<u8, VmError> {
     self
+      .state
       .reg8
       .get(reg as usize)
       .copied()
@@ -26,6 +27,7 @@ impl<S> Vm<S> {
   /// Sets value of register `reg`.
   fn set_reg(&mut self, reg: u8, val: u8) -> Result<(), VmError> {
     *self
+      .state
       .reg8
       .get_mut(reg as usize)
       .ok_or(VmError::BadReg(reg))? = val;
@@ -35,30 +37,30 @@ impl<S> Vm<S> {
 
   // Pops value from top of stack.
   fn stack_pop(&mut self) -> Result<u16, VmError> {
-    if self.reg_sp == 0 {
+    if self.state.reg_sp == 0 {
       return Err(VmError::StackUnderflow);
     }
 
-    let val = self.stack[self.reg_sp as usize];
-    self.reg_sp -= 1;
+    let val = self.state.stack[self.state.reg_sp as usize];
+    self.state.reg_sp -= 1;
 
     Ok(val)
   }
 
   // Pushes value to top of stack.
   fn stack_push(&mut self, val: u16) -> Result<(), VmError> {
-    if self.reg_sp as usize == self.stack.len() {
+    if self.state.reg_sp as usize == self.state.stack.len() {
       return Err(VmError::StackOverflow);
     }
 
-    self.reg_sp += 1;
-    self.stack[self.reg_sp as usize] = val;
+    self.state.reg_sp += 1;
+    self.state.stack[self.state.reg_sp as usize] = val;
 
     Ok(())
   }
 }
 
-impl<S> InsnVisitor for Vm<S>
+impl<S> InsnVisit for Vm<S>
 where
   S: Support,
 {
@@ -91,7 +93,7 @@ where
   }
 
   fn call_nnn(&mut self, nnn: u16) -> Self::Result {
-    self.stack_push(self.reg_pc)?;
+    self.stack_push(self.state.reg_pc)?;
     Ok(Step::Jump(nnn))
   }
 
@@ -125,7 +127,7 @@ where
   }
 
   fn add_x_kk(&mut self, x: u8, kk: u8) -> Self::Result {
-    self.set_reg(x, self.get_reg(x)? + kk)?;
+    self.set_reg(x, self.get_reg(x)?.wrapping_add(kk))?;
     Ok(Step::Next)
   }
 
@@ -194,8 +196,8 @@ where
     }
   }
 
-  fn ld_i_nnn(&mut self, x: u8, nnn: u16) -> Self::Result {
-    self.reg_i = nnn;
+  fn ld_i_nnn(&mut self, nnn: u16) -> Self::Result {
+    self.state.reg_i = nnn;
     Ok(Step::Next)
   }
 
@@ -215,7 +217,9 @@ where
   fn drw(&mut self, x: u8, y: u8, n: u8) -> Self::Result {
     let x = self.get_reg(x)?;
     let y = self.get_reg(y)?;
-    let sprite = &self.mem[self.reg_i as usize..n as usize];
+    let beg = self.state.reg_i as usize;
+    let end = beg + n as usize;
+    let sprite = &self.state.mem[beg..end];
     self.support.draw(sprite, x, y)?;
     Ok(Step::Next)
   }
@@ -239,7 +243,7 @@ where
   }
 
   fn ld_x_dt(&mut self, x: u8) -> Self::Result {
-    self.set_reg(x, self.reg_dt)?;
+    self.set_reg(x, self.state.reg_dt)?;
     Ok(Step::Next)
   }
 
@@ -250,59 +254,53 @@ where
   }
 
   fn ld_dt_x(&mut self, x: u8) -> Self::Result {
-    self.reg_dt = self.get_reg(x)?;
+    self.state.reg_dt = self.get_reg(x)?;
     Ok(Step::Next)
   }
 
   fn ld_st_x(&mut self, x: u8) -> Self::Result {
-    self.reg_st = self.get_reg(x)?;
+    self.state.reg_st = self.get_reg(x)?;
     Ok(Step::Next)
   }
 
   fn add_i_x(&mut self, x: u8) -> Self::Result {
-    self.reg_i += self.get_reg(x)? as u16;
+    self.state.reg_i = self.state.reg_i.wrapping_add(self.get_reg(x)? as u16);
     Ok(Step::Next)
   }
 
   fn ld_f_x(&mut self, x: u8) -> Self::Result {
-    todo!(
-      r"Set I = location of sprite for digit Vx.
-      
-      The value of I is set to the location for the hexadecimal sprite corresponding to 
-      the value of Vx. See section 2.4, Display, for more information on the Chip-8 
-      hexadecimal font."
-    )
+    self.state.reg_i = self.get_reg(x)? as u16 * 5;
+
+    Ok(Step::Next)
   }
 
   fn ld_b_x(&mut self, x: u8) -> Self::Result {
-    todo!(
-      r"Store BCD representation of Vx in memory locations I, I+1, and I+2.
-      
-      The interpreter takes the decimal value of Vx, and places the hundreds digit in 
-      memory at location in I, the tens digit at location I+1, and the ones digit at 
-      location I+2."
-    )
+    let x = self.get_reg(x)?;
+
+    self.state.mem[self.state.reg_i as usize] = x / 100;
+    self.state.mem[self.state.reg_i as usize + 1] = (x % 100) / 10;
+    self.state.mem[self.state.reg_i as usize + 2] = x % 10;
+
+    Ok(Step::Next)
   }
 
   fn ld_deref_i_x(&mut self, x: u8) -> Self::Result {
-    todo!(
-      r"Store registers V0 through Vx in memory starting at location I.
-      
-      The interpreter copies the values of registers V0 through Vx into memory, starting 
-      at the address in I."
-    )
+    for i in 0..x {
+      self.state.mem[self.state.reg_i as usize + i as usize] = self.get_reg(i)?;
+    }
+
+    Ok(Step::Next)
   }
 
   fn ld_x_deref_i(&mut self, x: u8) -> Self::Result {
-    todo!(
-      r"Read registers V0 through Vx from memory starting at location I.
-    
-      The interpreter reads values from memory starting at location I into registers V0 
-      through Vx."
-    )
+    for i in 0..x {
+      self.set_reg(i, self.state.mem[self.state.reg_i as usize + i as usize])?;
+    }
+
+    Ok(Step::Next)
   }
 
   fn invalid(&mut self, hi: u8, lo: u8) -> Self::Result {
-    Err(VmError::BadInsn(hi as u16 | (lo as u16) << 8))
+    Err(VmError::BadInsn((hi as u16) << 8 | lo as u16))
   }
 }

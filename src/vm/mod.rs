@@ -1,71 +1,43 @@
 //! Virtual machine.
 
-use self::{error::VmError, support::Support};
-use crate::{insn::visit::InsnVisitor, vm::visit::Step};
+use self::{
+  error::VmError,
+  state::VmState,
+  support::{Support, Terminal},
+};
+use crate::{insn::visit::InsnVisit, vm::visit::Step};
+use std::time::{Duration, Instant};
 
 pub mod error;
 pub mod sprites;
+pub mod state;
 pub mod support;
 pub mod visit;
 
-const MEM_OFF_BEG_PROG: usize = 0x200;
+pub const OFF_PROG: usize = 0x200;
+pub const SIZE_INSN: u16 = 2;
 
 /// A chip-8 virtual machine.
 pub struct Vm<S> {
-  mem: Vec<u8>,
-  reg8: [u8; 16],
-  reg_i: u16,
-  reg_dt: u8,
-  reg_st: u8,
-  reg_pc: u16,
-  reg_sp: u8,
-  stack: [u16; 16],
+  pub state: VmState,
 
+  last: Instant,
   support: S,
 }
 
 impl<S> Vm<S> {
   /// Create a [Vm] with the supplied graphics and keyboard.
   pub fn new(support: S) -> Self {
-    let mut mem = vec![0; 4096];
-
-    sprites::copy_to(&mut mem[..]);
-
     Vm {
-      mem,
-      reg8: [0; 16],
-      reg_i: 0,
-      reg_dt: 0,
-      reg_st: 0,
-      reg_pc: 0,
-      reg_sp: 0,
-      stack: [0; 16],
-
+      last: Instant::now(),
+      state: VmState::default(),
       support,
     }
   }
 
   /// Loads a program into memory and resets all registers and stack.
   pub fn load_program(&mut self, program: &[u8]) -> Result<(), VmError> {
-    if program.len() > self.mem.len() - MEM_OFF_BEG_PROG {
-      return Err(VmError::BadInsn(0));
-    }
-
-    let mut mem = vec![0; 4096];
-
-    sprites::copy_to(&mut mem[..]);
-    mem[MEM_OFF_BEG_PROG..program.len()].copy_from_slice(program);
-
-    self.mem = mem;
-    self.reg8 = [0; 16];
-    self.reg_i = 0;
-    self.reg_dt = 0;
-    self.reg_st = 0;
-    self.reg_pc = 0;
-    self.reg_sp = 0;
-    self.stack = [0; 16];
-
-    Ok(())
+    self.state.load_program(program)
   }
 
   /// Gets reference to support.
@@ -79,21 +51,30 @@ impl<S> Vm<S> {
   }
 }
 
-impl<S> Vm<S>
-where
-  S: Support,
-{
+impl Vm<Terminal> {
   /// Steps the virtual machine.
   pub fn update(&mut self) -> Result<(), VmError> {
-    let prog = self.reg_pc as usize * 2 + MEM_OFF_BEG_PROG;
-    let hi = self.mem[prog];
-    let lo = self.mem[prog + 1];
+    let (hi, lo) = self.state.get_insn_bytes().unwrap_or((0, 0));
     let step = self.visit_insn(hi, lo)?;
+
+    self.state.reg_dt = self.state.reg_dt.saturating_sub(1);
+    self.state.reg_st = self.state.reg_st.saturating_sub(1);
+
     match step {
-      Step::Next => self.reg_pc += 1,
-      Step::Skip => self.reg_pc += 2,
-      Step::Jump(offset) => self.reg_pc = offset,
+      Step::Next => self.state.reg_pc += SIZE_INSN,
+      Step::Skip => self.state.reg_pc += SIZE_INSN * 2,
+      Step::Jump(offset) => self.state.reg_pc = offset,
     }
+
+    let sleep = self.last.elapsed();
+    let sleep = Duration::from_millis(500) - sleep;
+
+    self
+      .support
+      .update(&self.state, sleep)
+      .expect("Failed to update terminal.");
+
+    self.last = Instant::now();
 
     Ok(())
   }

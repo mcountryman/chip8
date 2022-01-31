@@ -45,7 +45,7 @@
 //! * `Fx65` - LD Vx, [I]
 
 /// Describes a type that can visit chip-8 instructions.
-pub trait InsnVisitor {
+pub trait InsnVisit {
   type Result;
 
   fn nop(&mut self) -> Self::Result;
@@ -69,7 +69,7 @@ pub trait InsnVisitor {
   fn subn_x_y(&mut self, x: u8, y: u8) -> Self::Result;
   fn shl_x_y(&mut self, x: u8, y: u8) -> Self::Result;
   fn sne_x_y(&mut self, x: u8, y: u8) -> Self::Result;
-  fn ld_i_nnn(&mut self, x: u8, nnn: u16) -> Self::Result;
+  fn ld_i_nnn(&mut self, nnn: u16) -> Self::Result;
   fn jp_0_nnn(&mut self, nnn: u16) -> Self::Result;
   fn rnd(&mut self, x: u8, kk: u8) -> Self::Result;
   fn drw(&mut self, x: u8, y: u8, n: u8) -> Self::Result;
@@ -90,8 +90,8 @@ pub trait InsnVisitor {
   /// Parses an instruction from hi and lo bytes.
   #[inline]
   fn visit_insn(&mut self, hi: u8, lo: u8) -> Self::Result {
-    let nnnn = (hi << 4, hi & 0x0f, lo << 4, lo & 0xf);
-    let nnn = (hi as u16) << 12 & (lo as u16) << 8;
+    let nnnn = (hi >> 4, hi & 0x0f, lo >> 4, lo & 0x0f);
+    let nnn = ((hi & 0x0f) as u16) << 8 | (lo as u16);
     let kk = lo;
     let n = nnnn.3;
     let x = nnnn.1;
@@ -119,7 +119,7 @@ pub trait InsnVisitor {
       (0x8, _, _, 0x7) => self.subn_x_y(x, y),
       (0x8, _, _, 0xE) => self.shl_x_y(x, y),
       (0x9, _, _, 0x0) => self.sne_x_y(x, y),
-      (0xA, _, _, _) => self.ld_i_nnn(x, nnn),
+      (0xA, _, _, _) => self.ld_i_nnn(nnn),
       (0xB, _, _, _) => self.jp_0_nnn(nnn),
       (0xC, _, _, _) => self.rnd(x, kk),
       (0xD, _, _, _) => self.drw(x, y, n),
