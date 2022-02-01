@@ -39,8 +39,8 @@ impl Display for CallInsn {
 impl Display for SeInsn {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-      Self::RegVal(vx, val) => write!(f, "SE V{vx}, {val:#x}"),
-      Self::RegReg(vx, vy) => write!(f, "SE V{vx}, V{vy}"),
+      Self::RegVal(vx, val) => write!(f, "SE V{vx:x}, {val:#x}"),
+      Self::RegReg(vx, vy) => write!(f, "SE V{vx:x}, V{vy:x}"),
     }
   }
 }
@@ -48,8 +48,8 @@ impl Display for SeInsn {
 impl Display for SneInsn {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-      Self::RegVal(vx, val) => write!(f, "SNE V{vx}, {val:#x}"),
-      Self::RegReg(vx, vy) => write!(f, "SNE V{vx}, V{vy}"),
+      Self::RegVal(vx, val) => write!(f, "SNE V{vx:x}, {val:#x}"),
+      Self::RegReg(vx, vy) => write!(f, "SNE V{vx:x}, V{vy:x}"),
     }
   }
 }
@@ -75,9 +75,9 @@ impl Display for LdInsn {
 impl Display for AddInsn {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-      Self::RegVal(vx, val) => write!(f, "ADD V{vx}, {val:#x}"),
-      Self::RegReg(vx, vy) => write!(f, "ADD V{vx}, V{vy}"),
-      Self::MemReg(vx) => write!(f, "ADD I, V{vx}"),
+      Self::RegVal(vx, val) => write!(f, "ADD V{vx:x}, {val:#x}"),
+      Self::RegReg(vx, vy) => write!(f, "ADD V{vx:x}, V{vy:x}"),
+      Self::MemReg(vx) => write!(f, "ADD I, V{vx:x}"),
     }
   }
 }

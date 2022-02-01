@@ -93,9 +93,9 @@ pub trait InsnVisit {
     let nnnn = (hi >> 4, hi & 0x0f, lo >> 4, lo & 0x0f);
     let nnn = ((hi & 0x0f) as u16) << 8 | (lo as u16);
     let kk = lo;
-    let n = nnnn.3;
     let x = nnnn.1;
     let y = nnnn.2;
+    let n = nnnn.3;
 
     match nnnn {
       (0x0, 0x0, 0x0, 0x0) => self.nop(),

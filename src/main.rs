@@ -1,25 +1,42 @@
-use vm::{support::Terminal, Vm};
+use eyre::Result;
+use std::{
+  env, fs,
+  time::{Duration, Instant},
+};
+use ui::Ui;
+use vm::Vm;
 
 pub mod insn;
+pub mod ui;
 pub mod vm;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-  let terminal = Terminal::new()?;
-  let mut vm = Vm::new(terminal);
+fn main() -> Result<()> {
+  let mut vm = Vm::new();
+  let mut ui = Ui::new()?;
 
-  let program = if std::env::args().count() < 2 {
-    include_bytes!("../data/TEST").to_vec()
-  } else {
-    let program = std::env::args().nth(1).expect("Expected at least one arg.");
+  let program = env::args().nth(1).expect("Expected program path");
+  let program = fs::read(program)?;
 
-    std::fs::read(program)?
-  };
+  vm.load_program(&program)?;
 
-  vm.load_program(&program[..])?;
+  let rate_cpu = Duration::from_secs_f64(1. / 500.);
+  let rate_timers = Duration::from_secs_f64(1. / 60.);
+  let mut clock_cpu = Instant::now();
+  let mut clock_timers = Instant::now();
 
   loop {
-    vm.update()?;
-  }
+    if !ui.paused {
+      if clock_cpu.elapsed() >= rate_cpu {
+        clock_cpu = Instant::now();
+        vm.update()?;
+      }
 
-  Ok(())
+      if clock_timers.elapsed() >= rate_timers {
+        clock_timers = Instant::now();
+        vm.update_timers();
+      }
+    }
+
+    ui.update(&mut vm)?;
+  }
 }
