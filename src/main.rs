@@ -19,6 +19,14 @@ fn main() -> Result<()> {
 
   vm.load_program(&program)?;
 
+  ui.paused = env::args()
+    .nth(2)
+    .map(|arg| match arg.split_once("--is-paused=") {
+      Some((_, flag)) => flag.starts_with('t') || flag.starts_with('T'),
+      None => false,
+    })
+    .unwrap_or_default();
+
   let rate_cpu = Duration::from_secs_f64(1. / 500.);
   let rate_timers = Duration::from_secs_f64(1. / 60.);
   let mut clock_cpu = Instant::now();

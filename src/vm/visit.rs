@@ -97,7 +97,7 @@ impl InsnVisit for Vm {
   }
 
   #[inline]
-  fn sys_nnn(&mut self, nnn: u16) -> Self::Result {
+  fn sys_nnn(&mut self, _: u16) -> Self::Result {
     todo!(
       r"Jump to a machine code routine at nnn.
     
@@ -185,7 +185,7 @@ impl InsnVisit for Vm {
   }
 
   #[inline]
-  fn shr_x_y(&mut self, x: u8, y: u8) -> Self::Result {
+  fn shr_x_y(&mut self, x: u8, _: u8) -> Self::Result {
     let val = self.get_reg(x)?;
 
     self.set_reg(x, val >> 1)?;
@@ -203,7 +203,7 @@ impl InsnVisit for Vm {
   }
 
   #[inline]
-  fn shl_x_y(&mut self, x: u8, y: u8) -> Self::Result {
+  fn shl_x_y(&mut self, x: u8, _: u8) -> Self::Result {
     let val = self.get_reg(x)?;
     self.set_reg(x, val << 1)?;
     self.set_reg(0xf, val >> 7)?;

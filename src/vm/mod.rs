@@ -114,6 +114,7 @@ impl Vm {
     self.keys.insert(key);
 
     if self.wait_key {
+      self.reg_pc += INSN_SIZE;
       self.wait_key = false;
 
       // todo: We should probably provide a mechanism for returning a result indicating

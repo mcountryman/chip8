@@ -101,37 +101,49 @@ impl<'vram> Game<'vram> {
     let mid_y = game_mid_y - vram_mid_y as u16;
 
     for y in (0..self.vram_height()).step_by(4) {
-      let n1 = self.vram[y];
-      let n2 = self.vram[y + 1];
-      let n3 = self.vram[y + 2];
-      let n4 = self.vram[y + 3];
+      let n1 = self.vram.get(y).copied().unwrap_or(0);
+      let n2 = self.vram.get(y + 1).copied().unwrap_or(0);
+      let n3 = self.vram.get(y + 2).copied().unwrap_or(0);
+      let n4 = self.vram.get(y + 3).copied().unwrap_or(0);
 
       for x in (0..self.vram_width()).step_by(2) {
-        // 14_25_36_78
+        // Braille patterns are ordered as follows:
+        //  1 4
+        //  2 5
+        //  3 6
+        //  7 8
 
         // shifts two `n1` bits at x into bits of u8.
         let n1 = n1 >> 56u64.saturating_sub(x as u64);
-        let n1_hi = n1 as u8 & 0b10_00_00_00;
-        let n1_lo = n1 as u8 & 0b01_00_00_00;
-        let n1 = n1_hi >> 7 | n1_lo >> 4;
+        // 0b00_00_00_01 - 1
+        let n1_hi = (n1 as u8 & 0b10_00_00_00) >> 7;
+        // 0b00_00_10_00 - 4
+        let n1_lo = (n1 as u8 & 0b01_00_00_00) >> 3;
+        let n1 = n1_hi | n1_lo;
 
         // shifts two `n2` bits at x into bits of u8.
         let n2 = n2 >> 58u64.saturating_sub(x as u64);
-        let n2_hi = n2 as u8 & 0b00_10_00_00;
+        // 0b00_00_00_10 - 2
+        let n2_hi = (n2 as u8 & 0b00_10_00_00) >> 4;
+        // 0b00_01_00_00 - 5
         let n2_lo = n2 as u8 & 0b00_01_00_00;
-        let n2 = n2_hi >> 4 | n2_lo << 1;
+        let n2 = n2_hi | n2_lo;
 
         // shifts two `n1` bits at x into bits of u8.
         let n3 = n3 >> 60u64.saturating_sub(x as u64);
-        let n3_hi = n3 as u8 & 0b00_00_10_00;
-        let n3_lo = n3 as u8 & 0b00_00_01_00;
-        let n3 = n3_hi >> 1 | n3_lo << 3;
+        // 0b00_00_01_00 - 3
+        let n3_hi = (n3 as u8 & 0b00_00_10_00) >> 1;
+        // 0b00_10_00_00 - 6
+        let n3_lo = (n3 as u8 & 0b00_00_01_00) << 3;
+        let n3 = n3_hi | n3_lo;
 
         // shifts two `n2` bits at x into bits of u8.
         let n4 = n4 >> 62u64.saturating_sub(x as u64);
-        let n4_hi = n4 as u8 & 0b00_00_00_10; // 7, 8
-        let n4_lo = n4 as u8 & 0b00_00_00_01; // 7, 8
-        let n4 = n4_hi << 5 | n4_lo << 7;
+        // 0b01_00_00_00 - 7
+        let n4_hi = (n4 as u8 & 0b00_00_00_10) << 5;
+        // 0b10_00_00_00 - 8
+        let n4_lo = (n4 as u8 & 0b00_00_00_01) << 7;
+        let n4 = n4_hi | n4_lo;
 
         // Collect 2x2 bits in u8 where trailing bits correspond to tl, tr, bl, br
         let bits = n1 | n2 | n3 | n4;
@@ -205,6 +217,6 @@ fn get_braille_for_bits(bits: u8) -> Option<char> {
   if bits == 0 {
     Some(' ')
   } else {
-    char::from_u32(0x28u32 << 8 | bits as u32)
+    char::from_u32(0x2800u32 | bits as u32)
   }
 }

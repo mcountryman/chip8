@@ -14,7 +14,7 @@ pub fn keys<B: Backend>(vm: &Vm, area: Rect, ui: &mut Frame<B>) {
   let mut spans = Vec::new();
   let mut keys = vm.keys.to_vec();
 
-  for i in 0..4 {
+  for _ in 0..4 {
     let mut line = Vec::new();
 
     for _ in 0..area.width / 3 {

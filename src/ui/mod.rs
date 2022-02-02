@@ -2,12 +2,13 @@
 
 pub mod debug;
 pub mod game;
+pub mod keys;
 
-use self::game::Game;
+use self::{game::Game, keys::UiKeys};
 use crate::vm::{flags::VmKey, Vm};
 use crossterm::{
   cursor::Show,
-  event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
+  event::{DisableMouseCapture, EnableMouseCapture, KeyCode, KeyModifiers},
   execute,
   terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -15,7 +16,6 @@ use eyre::Result;
 use std::{
   io::{self, Stdout},
   panic,
-  time::Duration,
 };
 use tui::{
   backend::CrosstermBackend,
@@ -27,6 +27,7 @@ pub struct Ui {
   pub step: bool,
   pub paused: bool,
 
+  keys: UiKeys,
   terminal: Terminal<CrosstermBackend<Stdout>>,
 }
 
@@ -38,18 +39,18 @@ impl Ui {
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let terminal = Terminal::new(backend)?;
-    let ui = Self {
-      step: false,
-      paused: false,
-      terminal,
-    };
 
     panic::set_hook(Box::new(|err| {
       cleanup();
       eprintln!("{}", err);
     }));
 
-    Ok(ui)
+    Ok(Self {
+      step: false,
+      paused: false,
+      keys: UiKeys::new(),
+      terminal,
+    })
   }
 
   pub fn update(&mut self, vm: &mut Vm) -> Result<()> {
@@ -98,44 +99,138 @@ impl Ui {
       self.paused = true;
     }
 
-    if event::poll(Duration::from_millis(5))? {
-      if let Event::Key(key) = event::read()? {
-        let is_c = key.code == KeyCode::Char('c') || key.code == KeyCode::Char('C');
-        let is_ctrl_c = is_c && key.modifiers.contains(KeyModifiers::CONTROL);
+    for key in &mut self.keys {
+      let is_c = key.code == KeyCode::Char('c') || key.code == KeyCode::Char('C');
+      let is_ctrl_c = is_c && key.modifiers.contains(KeyModifiers::CONTROL);
 
-        match key.code {
-          KeyCode::Char('0') => vm.signal_key_down(VmKey::KEY_0),
-          KeyCode::Char('1') => vm.signal_key_down(VmKey::KEY_1),
-          KeyCode::Char('2') => vm.signal_key_down(VmKey::KEY_2),
-          KeyCode::Char('3') => vm.signal_key_down(VmKey::KEY_3),
-          KeyCode::Char('4') => vm.signal_key_down(VmKey::KEY_4),
-          KeyCode::Char('5') => vm.signal_key_down(VmKey::KEY_5),
-          KeyCode::Char('6') => vm.signal_key_down(VmKey::KEY_6),
-          KeyCode::Char('7') => vm.signal_key_down(VmKey::KEY_7),
-          KeyCode::Char('8') => vm.signal_key_down(VmKey::KEY_8),
-          KeyCode::Char('9') => vm.signal_key_down(VmKey::KEY_9),
-          KeyCode::Char('q') => vm.signal_key_down(VmKey::KEY_A),
-          KeyCode::Char('w') => vm.signal_key_down(VmKey::KEY_B),
-          KeyCode::Char('e') => vm.signal_key_down(VmKey::KEY_C),
-          KeyCode::Char('a') => vm.signal_key_down(VmKey::KEY_D),
-          KeyCode::Char('s') => vm.signal_key_down(VmKey::KEY_E),
-          KeyCode::Char('d') => vm.signal_key_down(VmKey::KEY_F),
-
-          KeyCode::Char(' ') => {
-            self.step = false;
-            self.paused = !self.paused;
+      match key.code {
+        KeyCode::Char('0') => {
+          if key.is_pressed {
+            vm.signal_key_down(VmKey::KEY_0)
+          } else {
+            vm.signal_key_up(VmKey::KEY_0)
           }
-          KeyCode::Enter => {
-            self.step = true;
-            self.paused = false;
-          }
-
-          code if code == KeyCode::Esc || is_ctrl_c => {
-            cleanup();
-            std::process::exit(0);
-          }
-          _ => {}
         }
+        KeyCode::Char('1') => {
+          if key.is_pressed {
+            vm.signal_key_down(VmKey::KEY_1)
+          } else {
+            vm.signal_key_up(VmKey::KEY_1)
+          }
+        }
+        KeyCode::Char('2') => {
+          if key.is_pressed {
+            vm.signal_key_down(VmKey::KEY_2)
+          } else {
+            vm.signal_key_up(VmKey::KEY_2)
+          }
+        }
+        KeyCode::Char('3') => {
+          if key.is_pressed {
+            vm.signal_key_down(VmKey::KEY_3)
+          } else {
+            vm.signal_key_up(VmKey::KEY_3)
+          }
+        }
+        KeyCode::Char('4') => {
+          if key.is_pressed {
+            vm.signal_key_down(VmKey::KEY_4)
+          } else {
+            vm.signal_key_up(VmKey::KEY_4)
+          }
+        }
+        KeyCode::Char('5') => {
+          if key.is_pressed {
+            vm.signal_key_down(VmKey::KEY_5)
+          } else {
+            vm.signal_key_up(VmKey::KEY_5)
+          }
+        }
+        KeyCode::Char('6') => {
+          if key.is_pressed {
+            vm.signal_key_down(VmKey::KEY_6)
+          } else {
+            vm.signal_key_up(VmKey::KEY_6)
+          }
+        }
+        KeyCode::Char('7') => {
+          if key.is_pressed {
+            vm.signal_key_down(VmKey::KEY_7)
+          } else {
+            vm.signal_key_up(VmKey::KEY_7)
+          }
+        }
+        KeyCode::Char('8') => {
+          if key.is_pressed {
+            vm.signal_key_down(VmKey::KEY_8)
+          } else {
+            vm.signal_key_up(VmKey::KEY_8)
+          }
+        }
+        KeyCode::Char('9') => {
+          if key.is_pressed {
+            vm.signal_key_down(VmKey::KEY_9)
+          } else {
+            vm.signal_key_up(VmKey::KEY_9)
+          }
+        }
+        KeyCode::Char('q') => {
+          if key.is_pressed {
+            vm.signal_key_down(VmKey::KEY_A)
+          } else {
+            vm.signal_key_up(VmKey::KEY_A)
+          }
+        }
+        KeyCode::Char('w') => {
+          if key.is_pressed {
+            vm.signal_key_down(VmKey::KEY_B)
+          } else {
+            vm.signal_key_up(VmKey::KEY_B)
+          }
+        }
+        KeyCode::Char('e') => {
+          if key.is_pressed {
+            vm.signal_key_down(VmKey::KEY_C)
+          } else {
+            vm.signal_key_up(VmKey::KEY_C)
+          }
+        }
+        KeyCode::Char('a') => {
+          if key.is_pressed {
+            vm.signal_key_down(VmKey::KEY_D)
+          } else {
+            vm.signal_key_up(VmKey::KEY_D)
+          }
+        }
+        KeyCode::Char('s') => {
+          if key.is_pressed {
+            vm.signal_key_down(VmKey::KEY_E)
+          } else {
+            vm.signal_key_up(VmKey::KEY_E)
+          }
+        }
+        KeyCode::Char('d') => {
+          if key.is_pressed {
+            vm.signal_key_down(VmKey::KEY_F)
+          } else {
+            vm.signal_key_up(VmKey::KEY_F)
+          }
+        }
+
+        KeyCode::Char(' ') if key.is_pressed => {
+          self.step = false;
+          self.paused = !self.paused;
+        }
+        KeyCode::Enter if key.is_pressed => {
+          self.step = true;
+          self.paused = false;
+        }
+
+        code if code == KeyCode::Esc || is_ctrl_c => {
+          cleanup();
+          std::process::exit(0);
+        }
+        _ => {}
       }
     }
 
