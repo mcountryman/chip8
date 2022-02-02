@@ -7,7 +7,7 @@ A rust, terminal ui chip8 emulator with debug information.
 ## Usage
 
 ```bash
-git clone git@github.com/mcountryman/chip8.git
+git clone git@github.com:mcountryman/chip8.git
 cd chip8
 
 # To start the emulator
